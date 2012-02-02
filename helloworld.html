@@ -1,0 +1,34 @@
+<script src="/socket.io/socket.io.js"></script>
+<textarea id='msg' type = 'text' value = '' ></textarea>
+<input id="sendmsg" type="button" value="send!" />
+<input id="setname" type="button" value="name" />
+<pre id="msgbox"></pre>
+<script>
+	var socket = io.connect();
+	var chat = io.connect('/chat');
+
+	chat.on('connect', function () {
+	});
+		chat.on('getname', function (m) {
+			chat.emit('setname',prompt("name"));
+	});
+	chat.on('message',function(m){
+		console.log(m)
+		window.msgbox.innerHTML+=(m)
+	});
+	window.sendmsg.onclick = function(e){
+		send()
+	}
+	window.setname.onclick = function(e){
+		chat.emit('setname',prompt("name"));
+	}
+	window.msg.onkeyup = function(e){
+		if(e.keyCode ==13){
+			send()
+		}
+	}
+	function send(){
+		chat.send(window.msg.value);
+		window.msg.value =''
+	}
+</script>
