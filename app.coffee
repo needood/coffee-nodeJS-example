@@ -29,7 +29,7 @@ app.use (req,res,next) ->
 		sess._touch = true
 	next()
 app.use (req,res,next) ->
-	fs.readFile __dirname + '/helloworld.html' , (err,data) ->
+	fs.readFile __dirname + '/chat.html' , (err,data) ->
 		res.setHeader 'Content-Type', 'text/html'
 		res.write data
 		res.end()
