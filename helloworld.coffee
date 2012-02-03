@@ -4,23 +4,29 @@ RedisStore = require('connect-redis') connect
 fs = require 'fs'
 sio = require './socket.io-session'
 
-store = new RedisStore
+
+
+sesStore = new RedisStore
+
+config = 
+	sessionMaxAge : 1296000000
 
 app = connect()
 app.use connect.cookieParser()
+app.use connect.favicon()
 app.use connect.session
 	secret:'pokerface'
-	store:store
+	store:sesStore
 	cookie:
-		maxAge:60000
+		maxAge:config.sessionMaxAge
 app.use '/auth' , (req,res,next) ->
 	res.end('auth')
 app.use (req,res,next) ->
 	sess = req.session
-	if sess.touch is true
-		req.session.reload ()->
+	if sess._touch is true
+		sess.reload () ->
 	else
-		sess.touch = true
+		sess._touch = true
 	next()
 app.use (req,res,next) ->
 	fs.readFile __dirname + '/helloworld.html' , (err,data) ->
@@ -28,31 +34,35 @@ app.use (req,res,next) ->
 		res.write data
 		res.end()
 
-app.listen 8081
-###
-socket = sio.enable
-	socket : io.listen app
-	store : store
-	parser : connect.cookieParser()
-	per_message: true
-###
+app.listen 8082
 
 socket = io.listen app
 
+chat = socket.of('/chat').on 'connection' , (cli) ->
+	cli.on 'message' , (m)->
+		cli.get 'nickname' , (err,name) ->
+			cli.get 'room' , (err,prevroom) ->
+				chat.in(prevroom).send name + ': ' + m if prevroom isnt undefined
+	cli.on 'switchroom', (room)->
+		console.log 'switchroom' , room
+		cli.get 'room' , (err,prevroom) ->
+			cli.leave prevroom if prevroom isnt undefined
+			cli.join room
+			cli.set 'room' , room
 
-chat = socket
-	.of('/chat')
-	.on 'connection', (cli) ->
-		sio cli , store , (sid , sess) ->
-			console.log 'session:' , sess
-			if sess.username is undefined
-				cli.emit('getname')
-			cli.on 'setname' , (m)->
-				sess.username = m
-				store.set(sid, sess)
-			cli.on 'message' , (m)->
-				console.log m
-				chat.send sess.username + ': ' + m
-				
-
+socket.sockets.on 'connection' , (cli) ->
+	sio cli , sesStore , (sid , sess) ->
+		console.log 'session: ' , sess , 'sid: ' , sid
+		if sess.nickname is undefined
+			cli.emit 'getname'
+		else
+			cli.set 'nickname',decodeURI sess.nickname
+		cli.on 'setname' , (m)->
+			cli.set 'nickname' , m
+			sess.nickname = encodeURI m
+			sesStore.set(sid, sess)
+		cli.on 'disconnect', (m) ->
+			cli.get 'nickname' , (err,name) ->
+				sess.nickname = encodeURI name
+				sesStore.set sid , sess
 

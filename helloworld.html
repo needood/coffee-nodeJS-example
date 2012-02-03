@@ -2,33 +2,49 @@
 <textarea id='msg' type = 'text' value = '' ></textarea>
 <input id="sendmsg" type="button" value="send!" />
 <input id="setname" type="button" value="name" />
+<select id="switchroom">
+  <option value ="volvo">Volvo</option>
+  <option value ="2b">2b</option>
+  <option value ="3">3</option>
+  <option value ="4">4</option>
+  <option value ="5">5</option>
+  <option value ="6">6</option>
+  <option value ="7">7</option>
+</select>
 <pre id="msgbox"></pre>
 <script>
 	var socket = io.connect();
 	var chat = io.connect('/chat');
 
-	chat.on('connect', function () {
+	socket.on('getname', function () {
+		socket.emit('setname',prompt("name"));
 	});
-		chat.on('getname', function (m) {
-			chat.emit('setname',prompt("name"));
-	});
+	
 	chat.on('message',function(m){
 		console.log(m)
-		window.msgbox.innerHTML+=(m)
+		document.getElementById('msgbox').innerHTML+='<br />' + m
 	});
-	window.sendmsg.onclick = function(e){
+	document.getElementById('sendmsg').onclick = function(e){
 		send()
 	}
-	window.setname.onclick = function(e){
-		chat.emit('setname',prompt("name"));
+	document.getElementById('setname').onclick = function(e){
+		socket.emit('setname',prompt("name"));
 	}
-	window.msg.onkeyup = function(e){
+	document.getElementById('msg').onkeydown = function(e){
 		if(e.keyCode ==13){
+			e.preventDefault()
 			send()
 		}
 	}
+	chat.emit('switchroom',document.getElementById('switchroom').value);
+	document.getElementById('switchroom').onchange = function(e){
+		chat.emit('switchroom',e.target.value);
+	}
 	function send(){
-		chat.send(window.msg.value);
-		window.msg.value =''
+		var msg = document.getElementById('msg')
+		if(msg.value != ''){
+			chat.send(msg.value);
+			msg.value =''
+		}
 	}
 </script>
